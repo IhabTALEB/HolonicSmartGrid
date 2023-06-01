@@ -48,7 +48,7 @@ public class SocketServer  extends WebSocketServer {
     @Override
     public void onMessage(WebSocket conn, String message) {
         System.out.println("Message from client: " + message);
-        gateway.link(conn, message);
+        gateway.read(conn, message);
 //        for (WebSocket sock : conns.keySet()) {
 //            sock.send(message);
 //        }

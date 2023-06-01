@@ -45,7 +45,7 @@ public class Sender{
     }
     
     public ACLMessage prepare(Object targetId, int performative){
-        this.put("targetId", targetId);
+        //this.put("targetId", targetId);
         JSONString=JSONValue.toJSONString(this.json);
         message = new ACLMessage(performative);
         message.addReceiver(new AID(targetId.toString(), AID.ISLOCALNAME));

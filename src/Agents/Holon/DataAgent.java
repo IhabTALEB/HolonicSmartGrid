@@ -23,23 +23,24 @@ import Utils.Agent.Messaging.Sender;
 public class DataAgent extends Agent{
     
     
-
-
-    
-    protected void setup(){
     Reader reader;
     Sender sender;
+    String Visualization;
+    
+    
+    protected void setup(){
+    
         
         //ArrayList<JSONObject> Data = new ArrayList<JSONObject>();
         //HashMap<String, JSONObject> Data = new HashMap<String, JSONObject>();
         
         JSONObject Data = new JSONObject();
-        
+        Visualization = null;
+
         //map.put("dog", "type of animal");
         //System.out.println(map.get("dog"));
         Object[] args = getArguments();
         String id = args[0].toString();
-        
         
         
         reader = new Reader();
@@ -68,17 +69,22 @@ public class DataAgent extends Agent{
             ArrayList<Double> demandRequests = new ArrayList<Double>();
             ArrayList<Double> demandResults = new ArrayList<Double>();
             //ArrayList<Double> PVResults = new ArrayList<Double>();
-            Boolean Visualization = false;
+            //Boolean Visualization = this.Visualization;
+            
+            
             
            @Override
            public void action(){    
-               //ACLMessage receivedMsg = receive();//blockingReceive
+               
+               
+                //ACLMessage receivedMsg = receive();//blockingReceive
                ACLMessage receivedMsg = blockingReceive();//blockingReceive
                
                if(receivedMsg!=null){
                    
                    // System.out.println(id + "_data : meas received");
 
+                   
                    
                     String type;
                     int timestep;
@@ -191,9 +197,10 @@ public class DataAgent extends Agent{
                             System.out.println("alldemand is " + allDemand + "for json : " + receivedJSON);
                             demandRequests.add(allDemand);
                             demandResults.add(allReceived);
-                            if(id.equals("Handréma")) System.out.println("???????????????????????????????????????????????"+this.Visualization);
-                            if(this.Visualization){
-                                
+                            //System.out.println("???????????????????????????????????????????????"+Visualization);
+                            if(id.equals("Handréma")) System.out.println("???????????????????????????????????????????????"+Visualization);
+                            if(id.equals(Visualization)){
+                                System.out.println("THIS.VISUALIZATION IS TRUEEEEE");
 //                                jsondata = new JSONObject();
 //                                jsondata.put("senderId", id);
 //                                jsondata.put("index", ((Long) receivedJSON.get("timestep")).intValue());
@@ -223,14 +230,15 @@ public class DataAgent extends Agent{
                             break;
                         case ACLMessage.REQUEST_WHENEVER:
                             
-                            this.Visualization = true;
+                            Visualization = id;
                             //if(Visualization) System.out.println("???????????????????????????????????????????????? received new INFORM.IF" + Visualization);
 //                            jsondata = new JSONObject();
 //                            jsondata.put("senderId", id);
-//                            jsondata.put("number_dem", demandRequests.size());
+//                            jsondata.put("numb er_dem", demandRequests.size());
 //                            jsondata.put("number_rec", demandResults.size());
                     
                             sender.reset().put("senderId", id).put("number_dem", demandRequests.size()).put("number_rec", demandResults.size());
+                            System.out.println("???????????????????????????????????????????????REQQ"+Visualization);
                             
                             for (int i = 0; i<demandRequests.size(); i++){
 //                                jsondata.put("dem_" + i, demandRequests.get(i));

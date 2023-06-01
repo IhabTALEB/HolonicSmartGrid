@@ -4,6 +4,8 @@
  */
 package Agents;
 
+import Utils.Agent.Messaging.Reader;
+import Utils.Agent.Messaging.Sender;
 import jade.core.AID;
 import jade.core.Agent;
 import jade.core.behaviours.CyclicBehaviour;
@@ -17,6 +19,8 @@ import org.json.simple.JSONObject;
 import org.json.simple.JSONValue;
 import org.java_websocket.WebSocket;
 import Utils.SocketServer;
+import org.json.simple.parser.JSONParser;
+import org.json.simple.parser.ParseException;
 
 
 
@@ -26,7 +30,13 @@ import Utils.SocketServer;
  */
 public class Gateway extends Agent{
    
+    Sender sender =new Sender("Gateway");
+    Reader reader =new Reader();
+    
     protected void setup(){
+        
+
+        
         SocketServer websocket = new SocketServer(this);
         websocket.start();
         //System.out.println("************************************************************** Address is : "+websocket.getAddress());
@@ -59,7 +69,6 @@ public class Gateway extends Agent{
                             for (WebSocket sock : websocket.conns.keySet()) {
                                 sock.send(receivedMsg.getContent());
                             }
-                            
                             break;
                      }
                 }else{
@@ -70,7 +79,28 @@ public class Gateway extends Agent{
         });
     }
     
-    public void link(WebSocket client, String holon){
+    public void read(WebSocket client, String message){
+        JSONObject json = JSONParse(message);
+        String request = (String) json.get("request");
+        String holon = (String) json.get("target");
+        if(request != null) switch (request){
+            case "vis":
+                send(sender.reset().put("state", "link").prepare(holon+"_data", ACLMessage.REQUEST_WHENEVER));
+                break;
+            case "info":
+                //throw new UnsupportedOperationException("Not supported yet.");//send(sender.reset().put);        //WHere to bring info ??
+                send(sender.reset(json).prepare("master", ACLMessage.REQUEST));
+                break;
+            case "logs":
+                send(sender.reset(json).prepare(holon+"_loger", ACLMessage.REQUEST_WHENEVER));
+                break;
+            default:
+                break;
+        }
+        
+    }
+    
+/*    public void link(WebSocket client, String holon){
         JSONObject jsonlink = new JSONObject();
         jsonlink.put("senderId", "Gateway");
         jsonlink.put("state", "link");
@@ -79,6 +109,21 @@ public class Gateway extends Agent{
         messageLink.addReceiver(new AID(holon+"_data", AID.ISLOCALNAME));
         messageLink.setContent(msglink);
         send(messageLink);
-    }
+    }*/
+ 
     
+    private static JSONObject JSONParse(String jsonString){
+        JSONObject  jsonObject=new JSONObject();
+        JSONParser jsonParser=new  JSONParser();
+        if ((jsonString != null) && !(jsonString.isEmpty())) {
+            try {
+                jsonObject=(JSONObject) jsonParser.parse(jsonString);
+            } catch (ParseException e) {
+                e.printStackTrace();
+            }
+        }
+        return jsonObject;
+    }
+            
+            
 }

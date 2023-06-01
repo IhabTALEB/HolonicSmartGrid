@@ -17,17 +17,25 @@ import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.json.simple.JSONObject;
 
 /**
  *
  * @author ihab
  */
-public class Launcher extends Agent{
+public class Master extends Agent{
+    
+
+    
     protected void setup(){
                 //createSimulation2("/home/ihab/EDM/final/24-30 2020 prod pv et conso.xlsx");
     //}
+
+    JSONObject fulljson;
+    JSONObject currentleveljson;
     
     
+    fulljson = new JSONObject();
     
     
     
@@ -69,6 +77,7 @@ public class Launcher extends Agent{
 
             for (int sheetNumber = 0; sheetNumber < workbook.getNumberOfSheets(); sheetNumber++) {
             
+                currentleveljson = new JSONObject();
                 level++;
                 
                 System.out.println("sheet number : " + sheetNumber);
@@ -110,9 +119,16 @@ public class Launcher extends Agent{
 //                    if((sheetNumber==0 && rownum==1) || (sheetNumber==1 && rownum==3))
 //                    if((sheetNumber==0 && rownum==1) || (sheetNumber==1 && (rownum>1 && rownum<7)))
                         AddHolon(upperId, holonId, filename, DemandRatio, PVRatio, thermal, level);
+                        
+                        currentleveljson.put(upperId, holonId);
+                        
+                        //j
+                        
 //                        test=true;
 //                    }
                     rownum++;
+                    fulljson.put(level, currentleveljson);
+                    
                     
                     
                     

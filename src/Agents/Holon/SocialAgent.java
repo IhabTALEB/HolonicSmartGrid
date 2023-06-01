@@ -196,7 +196,7 @@ public class SocialAgent extends Agent{
                                 break;
                             }
                             else{
-                                System.out.println(id +"_soc : UnexpAP_ACTIVEected sender: Expected from parent (upper) Holon but received from: " + senderId + receivedMsg);
+                                System.out.println(id +"_soc : Unexpcted sender: Expected from parent (upper) Holon but received from: " + senderId + receivedMsg);
                                 break;
                             }
                         case ACLMessage.CONFIRM:
