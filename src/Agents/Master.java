@@ -28,44 +28,40 @@ public class Master extends Agent{
 
     
     protected void setup(){
-                //createSimulation2("/home/ihab/EDM/final/24-30 2020 prod pv et conso.xlsx");
-    //}
 
     JSONObject fulljson;
     JSONObject currentleveljson;
     
     
     fulljson = new JSONObject();
-    
-    
-    
-    //public void createSimulation2(String FileName){
-//        ArrayList<Double>[] arr = new ArrayList[17];
-//        
-//        
-//        for(int i=0;i<17;i++){
-//            arr[i] = new ArrayList<Double>();
-//        }
-//        addBehaviour(new OneShotBehaviour(){
-//            @Override
-//            public void action(){
-//            }});
+
         String upperId;
         String holonId;
         int level =0;
-        //double value;
-        //String newregion;
         double regionvalue;
-        //ArrayList<String> children = new ArrayList<String>();
-        //ArrayList<String> regions = new ArrayList<String>();
-        //double pvRates[] = new double[17];
         double PVRatio;
         double DemandRatio;
         double thermal;
+        double BatteryCapacity;
+        double BatteryPower;
+        
+        double PVRatioParam=1;
+        double DemandRatioParam=1;
+        double thermalParam=1;
+        double BatteryCapacityParam=1;
+        double BatteryPowerParam=1;
+        
+        
+        double PVEcon=0;
+        double PVEnv=0;
+        double thermalEcon=0;
+        double thermalEnv=0;
+        double stoEcon=0;
+        double stoEnv=0;
+        
         Row row;
         Cell cell;
         String filename = "/home/ihab/EDM/final/final pred hourly.xlsx"; //24-30 2020 prod pv et conso
-//        Boolean test=false;
         int rownum = 0;
         
         try {
@@ -73,66 +69,121 @@ public class Master extends Agent{
             FileInputStream file = new FileInputStream(new File("/home/ihab/EDM/final/PV and Demand/PV and populations - edited version.xlsx"));
             XSSFWorkbook workbook = new XSSFWorkbook(file);
             
-            AddHolon("none", "Mayotte", filename, 0, 0, 0, level);
-
             for (int sheetNumber = 0; sheetNumber < workbook.getNumberOfSheets(); sheetNumber++) {
             
                 currentleveljson = new JSONObject();
-                level++;
                 
                 System.out.println("sheet number : " + sheetNumber);
                 
                 XSSFSheet sheet = workbook.getSheetAt(sheetNumber);
                 
-//                test=false;
-                
                 int i = 0;
                 regionvalue=0;
                 rownum = 0;
                 Iterator<Row> rowIterator = sheet.iterator();
+                System.out.println("LAST ROW IS: "+ sheet.getLastRowNum());
                 while (rowIterator.hasNext()) {
                     row = rowIterator.next();
                     Iterator<Cell> cellIterator = row.cellIterator();
 
-                    cell = cellIterator.next();
-                    upperId = cell.getStringCellValue();
-                    
-                    cell = cellIterator.next();
-                    holonId = cell.getStringCellValue();
+                    if(rownum==0){
+                        System.out.println("rownum is: "+rownum);
+                        cellIterator.next();
+                        cellIterator.next();
+                        
+                        cell = cellIterator.next();
+                        DemandRatioParam = cell.getNumericCellValue();
 
-                    cell = cellIterator.next();
-                    DemandRatio = cell.getNumericCellValue();
-//                    i++;
-                    
-                    cell = cellIterator.next();
-                    PVRatio = cell.getNumericCellValue();
-                    
-                    cell = cellIterator.next();
-                    thermal = cell.getNumericCellValue();
-//                    i++;
+                        cell = cellIterator.next();
+                        PVRatioParam = cell.getNumericCellValue();
+                        
+                        cell = cellIterator.next();
+                        cell = cellIterator.next();
+                        
+                        cell = cellIterator.next();
+                        thermalParam = cell.getNumericCellValue();
 
-                    //if(holonId.equals("Dzaoudzi")) thermal=0;
-                    //if(holonId.equals("Koungou")) thermal = thermal;
-                    
+                        cell = cellIterator.next();
+                        cell = cellIterator.next();
 
-//                    if (!test){
-//                    if((sheetNumber==0 && rownum==1) || (sheetNumber==1 && rownum==3))
-//                    if((sheetNumber==0 && rownum==1) || (sheetNumber==1 && (rownum>1 && rownum<7)))
-                        AddHolon(upperId, holonId, filename, DemandRatio, PVRatio, thermal, level);
+                        cell = cellIterator.next();
+                        BatteryCapacityParam = cell.getNumericCellValue();
+
+
+                        cell = cellIterator.next();
+                        BatteryPowerParam = cell.getNumericCellValue();
+                        
+                        cell = cellIterator.next();
+                        cell = cellIterator.next();
+                    }
+                    else{
+                        System.out.println("rownum is: "+rownum);
+
+
+                        cell = cellIterator.next();
+                        upperId = cell.getStringCellValue();
+                        System.out.println("testtest"+upperId);
+
+                        cell = cellIterator.next();
+                        holonId = cell.getStringCellValue();
+
+                        cell = cellIterator.next();
+                        DemandRatio = cell.getNumericCellValue();
+
+                        cell = cellIterator.next();
+                        PVRatio = cell.getNumericCellValue();
+
+                        cell = cellIterator.next();
+                        PVEcon = cell.getNumericCellValue();
+
+                        cell = cellIterator.next();
+                        PVEnv = cell.getNumericCellValue();
+
+                        
+                        cell = cellIterator.next();
+                        thermal = cell.getNumericCellValue();
+                        
+                        
+                        cell = cellIterator.next();
+                        thermalEcon = cell.getNumericCellValue();
+
+                        cell = cellIterator.next();
+                        thermalEnv = cell.getNumericCellValue();
+                    
+                    
+                        cell = cellIterator.next();
+                        BatteryCapacity = cell.getNumericCellValue();
+
+
+                        cell = cellIterator.next();
+                        BatteryPower = cell.getNumericCellValue();
+
+                        
+                        cell = cellIterator.next();
+                        stoEcon = cell.getNumericCellValue();
+
+                        cell = cellIterator.next();
+                        stoEnv = cell.getNumericCellValue();
+                        
+                        AddHolon(upperId, holonId, filename, DemandRatio*DemandRatioParam, 
+                                PVRatio*PVRatioParam, PVEcon, PVEnv,
+                                thermal*thermalParam, thermalEcon, thermalEnv,
+                                BatteryCapacity*BatteryCapacityParam, BatteryPower*BatteryPowerParam, stoEcon, stoEnv,
+                                level);
                         
                         currentleveljson.put(upperId, holonId);
                         
-                        //j
-                        
-//                        test=true;
-//                    }
+
+                        fulljson.put(level, currentleveljson);
+                    }
                     rownum++;
-                    fulljson.put(level, currentleveljson);
+                    
                     
                     
                     
                     
                 }
+                level++;
             }
         file.close();
         AddAgent("Gateway");
@@ -143,7 +194,7 @@ public class Master extends Agent{
     }
     
     
-    public static void AddHolon(String upperId, String holonId, String FileName, double popValue, double pvValue, double thermal, int level){//, ArrayList<String> children
+    public static void AddHolon(String upperId, String holonId, String FileName, double popValue, double pvValue, double pvEcon, double pvEnv, double thermal, double thermalEcon, double thermalEnv, double batcapacity, double batpow, double stoEcon, double stoEnv, int level){//, ArrayList<String> children
         //add the container with its five agent
         
         System.out.println("adding holon : " + holonId);
@@ -162,7 +213,7 @@ public class Master extends Agent{
              AgentController data = otherContainer.createNewAgent(holonId+"_data", "Agents.Holon.DataAgent", new Object[] {holonId});//params
              AgentController meas = otherContainer.createNewAgent(holonId+"_meas", "Agents.Holon.MeasurementAgent", new Object[] {holonId, FileName, popValue, pvValue});//params
              AgentController pred = otherContainer.createNewAgent(holonId+"_pred", "Agents.Holon.PredictionAgent", new Object[] {holonId});//params
-             AgentController cont = otherContainer.createNewAgent(holonId+"_cont", "Agents.Holon.ControlAgent", new Object[] {holonId, upperId, thermal});//params, children
+             AgentController cont = otherContainer.createNewAgent(holonId+"_cont", "Agents.Holon.ControlAgent", new Object[] {holonId, upperId, pvEcon, pvEnv, thermal, thermalEcon, thermalEnv, batcapacity, batpow, stoEcon, stoEnv});//params, children
              AgentController soc = otherContainer.createNewAgent(holonId+"_soc", "Agents.Holon.SocialAgent", new Object[] {holonId, upperId, level});//params
              meas.start();
              data.start();

@@ -25,20 +25,15 @@ public class DataAgent extends Agent{
     
     Reader reader;
     Sender sender;
-    String Visualization;
+
     
     
     protected void setup(){
     
-        
-        //ArrayList<JSONObject> Data = new ArrayList<JSONObject>();
-        //HashMap<String, JSONObject> Data = new HashMap<String, JSONObject>();
-        
         JSONObject Data = new JSONObject();
+        String Visualization;        
         Visualization = null;
 
-        //map.put("dog", "type of animal");
-        //System.out.println(map.get("dog"));
         Object[] args = getArguments();
         String id = args[0].toString();
         
@@ -46,20 +41,15 @@ public class DataAgent extends Agent{
         reader = new Reader();
         sender = new Sender(id);
         
-        
-//        addBehaviour(new OneShotBehaviour(){
-//           @Override
-//           public void action(){
-//               
-//               
-//           }
-//        });
-        
         addBehaviour(new CyclicBehaviour(){
             
             JSONObject jsondata;
             String msg;
             ACLMessage message;
+            
+            
+            String Visualization = null;        
+            //Visualization = null;
             
             String data;
             ArrayList PVs =new ArrayList();
@@ -68,23 +58,19 @@ public class DataAgent extends Agent{
             Boolean waiting = false;
             ArrayList<Double> demandRequests = new ArrayList<Double>();
             ArrayList<Double> demandResults = new ArrayList<Double>();
-            //ArrayList<Double> PVResults = new ArrayList<Double>();
-            //Boolean Visualization = this.Visualization;
-            
-            
+            ArrayList<Double> batStored = new ArrayList<Double>();
+            ArrayList<Double> DemandRatios = new ArrayList<Double>();
+            ArrayList<Double> PVRatios = new ArrayList<Double>();
+            ArrayList<Double> impactCarbons = new ArrayList<Double>();
+            ArrayList<Integer> bestPhases = new ArrayList<Integer>();
             
            @Override
            public void action(){    
                
                
-                //ACLMessage receivedMsg = receive();//blockingReceive
                ACLMessage receivedMsg = blockingReceive();//blockingReceive
                
                if(receivedMsg!=null){
-                   
-                   // System.out.println(id + "_data : meas received");
-
-                   
                    
                     String type;
                     int timestep;
@@ -93,168 +79,110 @@ public class DataAgent extends Agent{
                     
                     data = receivedMsg.getContent();
                     JSONObject receivedJSON = JSONParse(data);
-//                            System.out.println("??????????????????????????????????????? "+receivedMsg.getPerformative()+" ??????????????????????????????????????????????,");
                     
                     switch(receivedMsg.getPerformative()){
                         case ACLMessage.REQUEST:
                             //System.out.println(id + "_data : request received not sent yet");
                             this.reqTimestep = ((Long) receivedJSON.get("timestep")).intValue();
                             if(this.reqTimestep < PVs.size() && this.reqTimestep < Demands.size()){
-//                                JSONObject jsondata = new JSONObject();
-//                                jsondata.put("senderId", id + "_data");
-//                                jsondata.put("PV", PVs.get(reqTimestep));
-//                                jsondata.put("Demand", Demands.get(reqTimestep));
-//                                jsondata.put("timestep", reqTimestep);
-//                                String msg = JSONValue.toJSONString(jsondata);
-//                                ACLMessage message = new ACLMessage(ACLMessage.INFORM);
-//                                message.addReceiver(new AID(id+"_cont", AID.ISLOCALNAME));
-//                                message.setContent(msg);
-//                                send(message);
                                 send(sender.reset().put("senderId", id + "_data").put("PV", PVs.get(reqTimestep)).put("Demand", Demands.get(reqTimestep)).put("timestep", reqTimestep).prepare(id+"_cont", ACLMessage.INFORM));
-                                //System.out.println(id + "_data : data sent");
                             }
                             else{
                                 this.waiting = true;
-                                System.out.println(id + "_data : data not available yet ! waiting for Measurement Agent");
                             }
                             break;
                         case ACLMessage.INFORM:
-                            //System.out.println(id + "_data : measurement received");
-                            //System.out.println("**********************"+ receivedJSON);
                             type = (String) receivedJSON.get("type");
                             timestep = ((Long) receivedJSON.get("timestep")).intValue();
-                            //value = (Double) receivedJSON.get("value");
-                            //try{
                             value = ((Number)receivedJSON.get("value")).doubleValue();
-                            //}catch(Exception e){
-                            //    System.out.println("******************************************************************"+receivedJSON);
-                            //}
                             if(type.equals("PV")){
                                 this.PVs.add(value);
-                                //System.out.println(id + "_data : PVS size is " + PVs.size() + " and Demands size is " + Demands.size());
                             }else{
                                 this.Demands.add(value);
                             }
-                            if((this.reqTimestep == PVs.size()-1) && (this.reqTimestep == Demands.size()-1)){
-                                //System.out.println(id + "_data : data sending");
-//                                JSONObject jsondata = new JSONObject();
-//                                jsondata.put("senderId", id + "_meas"); //IT SHOULD BE DATA AND NOT MEAS ////////////////////////////////////////// ATTENTIONNNNNNNNNNNNNNNNNNN ////////////////////////////
-//                                jsondata.put("PV", PVs.get(this.reqTimestep));
-//                                jsondata.put("Demand", Demands.get(this.reqTimestep));
-//                                jsondata.put("timestep", this.reqTimestep);
-//                                String msg = JSONValue.toJSONString(jsondata);
-//                                ACLMessage message = new ACLMessage(ACLMessage.INFORM);
-//                                message.addReceiver(new AID(id+"_cont", AID.ISLOCALNAME));
-//                                message.setContent(msg);
-//                                send(message);
+                            if((this.reqTimestep == PVs.size()-1) && (this.reqTimestep == Demands.size()-1)){// && this.waiting
                                 send(sender.reset().put("senderId", id + "_data").put("PV", PVs.get(this.reqTimestep)).put("Demand", Demands.get(this.reqTimestep)).put("timestep", this.reqTimestep).prepare(id+"_cont", ACLMessage.INFORM));
-                                //System.out.println(id + "_data : data sent");
+                                this.waiting = false;
+//                                if(id.equals("Mamoudzou")) System.out.println("testthedataagent with wating "+timestep);
                             }
-//                            String[] addressArr = receivedMsg.getSender().getAddressesArray();
-//                            //System.out.println(addressArr[0]);
-//                            String sender =addressArr[0];
-//                            if ( sender == (id + "_meas")){
-//                                sender = "self";
-//                            }
-//                            else{
-//                                sender = (String) receivedJSON.get("senderId");
-//                            }
-//                            JSONObject JSONObj = new JSONObject();
-//                            if(Data.get(sender)==null){
-//                                int NextIndex = 1;
-//                                ArrayList<Double> PV = new ArrayList<Double>();
-//                                ArrayList<Double> Demand = new ArrayList<Double>();
-//                                JSONObj.put("NextIndex", NextIndex);
-//                                JSONObj.put("PV", PV);
-//                                JSONObj.put("Demand", Demand);
-//                                Data.put("sender", JSONObj);
-//                            }
-//                            JSONObj = (JSONObject) Data.get("sender");
-//                            JSONObj.put("NextIndex", (Double)JSONObj.get("NextIndex")+1);
-//                            JSONObj.put("PV", (Double) JSONObj.get("NextIndex")+1);
-//                            JSONObj.put("Demand", (Double)JSONObj.get("NextIndex")+1);
-//                            if (type == "PV"){
-//                                ArrayList<Double> PV = (ArrayList)JSONObj.get("PV");
-//                                PV.add((Double) receivedJSON.get("PV"));
-//                            }
-//                            else{
-//                                ArrayList<Double> Demand = (ArrayList)JSONObj.get("Demand");
-//                                Demand.add((Double) receivedJSON.get("Demand"));
-//                            }
-
-
-                            
-                            
-                            
-
-                            //Data.add(JSONObj);
                             break;
                         
                         case ACLMessage.INFORM_IF:
                             
                             double allReceived =((Number)receivedJSON.get("allReceived")).doubleValue();
-                            double allDemand =((Number)receivedJSON.get("allDemand")).doubleValue();
-                            System.out.println("alldemand is " + allDemand + "for json : " + receivedJSON);
+                            double allDemand=0;
+                            try{
+                                 allDemand =((Number)receivedJSON.get("allDemand")).doubleValue();
+                            }
+                            catch(Exception e){
+//                                System.out.println("--ERROORR-- : " + receivedJSON);
+                            }
+                            double allBatteryStored =((Number)receivedJSON.get("LocalBatteryStocked")).doubleValue();
+                            double DemandRatio =((Number)receivedJSON.get("DemandRatio")).doubleValue();
+                            double PVRatio =((Number)receivedJSON.get("PVRatio")).doubleValue();
+                            double impactCarbon =((Number)receivedJSON.get("impactCarbon")).doubleValue();
+                            int bestPhase =((Number)receivedJSON.get("bestPhase")).intValue();
+
+//                            System.out.println("alldemand is " + allDemand + "for json : " + receivedJSON);
                             demandRequests.add(allDemand);
                             demandResults.add(allReceived);
-                            //System.out.println("???????????????????????????????????????????????"+Visualization);
-                            if(id.equals("Handréma")) System.out.println("???????????????????????????????????????????????"+Visualization);
-                            if(id.equals(Visualization)){
-                                System.out.println("THIS.VISUALIZATION IS TRUEEEEE");
-//                                jsondata = new JSONObject();
-//                                jsondata.put("senderId", id);
-//                                jsondata.put("index", ((Long) receivedJSON.get("timestep")).intValue());
-//                                //jsondata.put("max", demandRequests.size()-1);
-//
-//                                //for (int i = 0; i<demandRequests.size()-1; i++){
-//                                    jsondata.put("rec_" + ((Long) receivedJSON.get("timestep")).intValue(), allReceived);
-//                                    jsondata.put("dem_" + ((Long) receivedJSON.get("timestep")).intValue(), allDemand);
-//                                    jsondata.put("feedback", ((Number)receivedJSON.get("feedback")).doubleValue());
-//                                //}
-//
-//                                msg = JSONValue.toJSONString(jsondata);
-//                                message = new ACLMessage(ACLMessage.INFORM);
-//                                message.addReceiver(new AID("Gateway", AID.ISLOCALNAME));
-//                                message.setContent(msg);
-//                                send(message);
-//                                
+                            batStored.add(allBatteryStored);
+                            DemandRatios.add(DemandRatio);
+                            PVRatios.add(PVRatio);
+                            impactCarbons.add(impactCarbon);
+                            bestPhases.add(bestPhase);
+                            if(id.equals(this.Visualization)){
                                 send(sender.reset()
                                         .put("senderId", id)
                                         .put("index", ((Long) receivedJSON.get("timestep")).intValue())
                                         .put("rec_" + ((Long) receivedJSON.get("timestep")).intValue(), allReceived)
                                         .put("dem_" + ((Long) receivedJSON.get("timestep")).intValue(), allDemand)
-                                        .put("feedback", ((Number)receivedJSON.get("feedback")).doubleValue())
+                                        .put("bat_" + ((Long) receivedJSON.get("timestep")).intValue(), allBatteryStored)
+                                        .put("demandratio_" + ((Long) receivedJSON.get("timestep")).intValue(), DemandRatio)
+                                        .put("pvratio_" + ((Long) receivedJSON.get("timestep")).intValue(), PVRatio)
+                                        .put("impactCarbon_" + ((Long) receivedJSON.get("timestep")).intValue(), impactCarbon)
+                                        .put("bestPhase_" + ((Long) receivedJSON.get("timestep")).intValue(), bestPhase)
+//                                        .put("feedbackdemand", ((Number)receivedJSON.get("feedbackdemand")).doubleValue())
+//                                        .put("feedbackstorage", ((Number)receivedJSON.get("feedbackstorage")).doubleValue())
                                         .prepare("Gateway", ACLMessage.INFORM));
                             }
                             
                             break;
+
                         case ACLMessage.REQUEST_WHENEVER:
                             
-                            Visualization = id;
-                            //if(Visualization) System.out.println("???????????????????????????????????????????????? received new INFORM.IF" + Visualization);
-//                            jsondata = new JSONObject();
-//                            jsondata.put("senderId", id);
-//                            jsondata.put("numb er_dem", demandRequests.size());
-//                            jsondata.put("number_rec", demandResults.size());
+                            this.Visualization = id;
                     
                             sender.reset().put("senderId", id).put("number_dem", demandRequests.size()).put("number_rec", demandResults.size());
-                            System.out.println("???????????????????????????????????????????????REQQ"+Visualization);
                             
                             for (int i = 0; i<demandRequests.size(); i++){
-//                                jsondata.put("dem_" + i, demandRequests.get(i));
                                 sender.put("dem_" + i, demandRequests.get(i));
                             }
                             
                             for (int i = 0; i<demandResults.size(); i++){
-//                                jsondata.put("rec_" + i, demandResults.get(i));
                                 sender.put("rec_" + i, demandResults.get(i));
                             }
                             
-//                            msg = JSONValue.toJSONString(jsondata);
-//                            message = new ACLMessage(ACLMessage.INFORM);
-//                            message.addReceiver(new AID("Gateway", AID.ISLOCALNAME));
-//                            message.setContent(msg);
-//                            send(message);
+                            for (int i = 0; i<demandResults.size(); i++){
+                                sender.put("bat_" + i, batStored.get(i));
+                            }
+                            
+                            for (int i = 0; i<DemandRatios.size(); i++){
+                                sender.put("demandratio_" + i, DemandRatios.get(i));
+                            }
+                            
+                            for (int i = 0; i<PVRatios.size(); i++){
+                                sender.put("pvratio_" + i, PVRatios.get(i));
+                            }
+                            
+                            for (int i = 0; i<impactCarbons.size(); i++){
+                                sender.put("impactCarbon_" + i, impactCarbons.get(i));
+                            }
+                            
+                            for (int i = 0; i<bestPhases.size(); i++){
+                                sender.put("bestPhase_" + i, bestPhases.get(i));
+                            }
+                            
                             send(sender.prepare("Gateway", ACLMessage.INFORM));
                             break;
                     }
@@ -266,27 +194,6 @@ public class DataAgent extends Agent{
            }
         });
     }
-    
-    
-
-    
-//    public String checkMessages(){
-//        ACLMessage receivedMsg = blockingReceive();
-//               if(receivedMsg!=null){
-//                 
-//                    
-//                   
-//                    switch(receivedMsg.getPerformative()){
-//                        case ACLMessage.REQUEST:
-//                            break;
-//                        case ACLMessage.INFORM:
-//                            return receivedMsg.getContent();
-//                    }
-//               }else{
-//                   //block();
-//               }
-//    };
-    
     
     private static JSONObject JSONParse(String jsonString){
         JSONObject  jsonObject=new JSONObject();

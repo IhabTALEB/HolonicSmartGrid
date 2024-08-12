@@ -1,0 +1,15 @@
+/dist/
+/build/
+/src/Agents/Holon/ControlAgent1.java
+/src/Agents/Holon/ControlAgent2.java
+/src/Agents/Holon/ControlAgent3.java
+/src/Agents/Holon/ControlAgent4.java
+/src/Agents/Holon/LoggerAgent.java
+/src/holonicsmartgrid/
+/src/Utils/Agent/Messaging/Loger.java
+/src/Utils/Control/PSO/
+/src/Utils/Control/Learner.java
+/src/Utils/Control/RLCWS.java
+/src/visualizer/main_1.html
+/src/visualizer/main_old.html
+/src/visualizer/map_old.js

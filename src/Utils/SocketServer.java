@@ -28,7 +28,7 @@ public class SocketServer  extends WebSocketServer {
 //        conns = new HashSet<>();
         conns = new HashMap<WebSocket, String>();
         gateway = gtw;
-        //System.out.println("************************************************************** Address is : "+getAddress());
+        //System.out.println("Address is : "+getAddress());
     }
 
     @Override
@@ -36,7 +36,7 @@ public class SocketServer  extends WebSocketServer {
         //conns.add(conn);
         conns.put(conn, null);
         System.out.println("New connection from " + conn.getRemoteSocketAddress().getAddress().getHostAddress());
-        //System.out.println("************************************************************** other Address is : " + super.getLocalSocketAddress(conn));
+        //System.out.println("other Address is : " + super.getLocalSocketAddress(conn));
     }
 
     @Override
@@ -56,7 +56,7 @@ public class SocketServer  extends WebSocketServer {
 
     @Override
     public void onError(WebSocket conn, Exception ex) {
-        //ex.printStackTrace();
+        ex.printStackTrace();
         if (conn != null) {
             conns.remove(conn);
             // do some thing if required 

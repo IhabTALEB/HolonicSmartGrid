@@ -39,17 +39,17 @@ public class Gateway extends Agent{
         
         SocketServer websocket = new SocketServer(this);
         websocket.start();
-        //System.out.println("************************************************************** Address is : "+websocket.getAddress());
-        //System.out.println("************************************************************** GateWay Started **************************************");
+        //System.out.println("Address is : "+websocket.getAddress());
+        //System.out.println("GateWay Started");
         
         if (Desktop.isDesktopSupported()) {
-        //System.out.println("************************************************************** Condition accepted *************************************");
+        //System.out.println("Condition accepted");
         Desktop dt = Desktop.getDesktop();
             if (dt.isSupported(Desktop.Action.BROWSE)) {  
                 try {
                     File f = new File("./src/visualizer/main.html");
                     dt.browse(f.toURI());
-                    //System.out.println("**************************************************************Started**************************************");
+                    //System.out.println("Started");
                 } catch (IOException ex) {
                     Logger.getLogger(Gateway.class.getName()).log(Level.SEVERE, null, ex);
                 }
@@ -80,19 +80,22 @@ public class Gateway extends Agent{
     }
     
     public void read(WebSocket client, String message){
+        System.out.println(message);
         JSONObject json = JSONParse(message);
         String request = (String) json.get("request");
         String holon = (String) json.get("target");
         if(request != null) switch (request){
             case "vis":
-                send(sender.reset().put("state", "link").prepare(holon+"_data", ACLMessage.REQUEST_WHENEVER));
+                send(sender.reset().put("state", "link").prepare(holon + "_data", ACLMessage.REQUEST_WHENEVER));
+                break;
+            case "mod":
+                send(sender.reset(json).prepare(holon + "_cont", ACLMessage.INFORM));
                 break;
             case "info":
-                //throw new UnsupportedOperationException("Not supported yet.");//send(sender.reset().put);        //WHere to bring info ??
                 send(sender.reset(json).prepare("master", ACLMessage.REQUEST));
                 break;
             case "logs":
-                send(sender.reset(json).prepare(holon+"_loger", ACLMessage.REQUEST_WHENEVER));
+                //send(sender.reset(json).prepare(holon+"_loger", ACLMessage.REQUEST_WHENEVER));
                 break;
             default:
                 break;

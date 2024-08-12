@@ -12,4 +12,8 @@ import jade.core.Agent;
  */
 public class PredictionAgent extends Agent{
     
+    //The prediction algorithm contans contains confidential parts form the Task T2.4 and thus it has not been included here,
+    //the predictions are directly read from the data agent instead
+    
+    
 }

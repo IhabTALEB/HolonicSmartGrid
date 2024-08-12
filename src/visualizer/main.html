@@ -6,10 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css" type="text/css">
   
-  <!-- Latest compiled and minified CSS -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/5.2.3/css/bootstrap.min.css">
-<!-- Optional theme -->
-<!--<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap-theme.min.css">-->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" integrity="sha256-kLaT2GOSpHechhsozzB+flnD+zUyjE2LlfWPgU04xyI=" crossorigin=""/>
 </head>
 
@@ -23,211 +20,108 @@
               <img src="MAESHA logo.png" style="" alt="MAESHA logo">
          </a>
         <ul class="navbar-nav mx-auto">
-          <li class="nav-item" id = "mainBtn"> <a class="nav-link">Main menu</a> </li>
-          <li class="nav-item" id = "simBtn"> <a class="nav-link">Simulation</a> </li>
-          <li class="nav-item" id = "logsBtn"> <a class="nav-link">Logs</a> </li>
+          <li class="nav-item" id = "simBtn" data-bs-toggle="modal" data-bs-target="#formModal"> <a class="nav-link">Modify Simulation</a> </li> <!-- class="btn btn-primary"  -->
         </ul>
         <ul class="navbar-nav">
-          <li class="nav-item"> <a class="nav-link" href="#">Restart</a> </li>
-          <li class="nav-item"> <a class="nav-link text-primary" href="#">Stop</a> </li>
+          <li class="nav-item" id="stopSim"> <a class="nav-link">Stop</a> </li>
+          <li class="nav-item" id="saveGraph"> <a class="nav-link text-primary">Save</a> </li>
         </ul>
       </div>
     </div>
   </nav>
   <div class="py-5">
-    <div class="container pages" id="logs">
-
-
-      <div class="row">
-
-        <div class="row">
-
-          <div class="col-md-4">
-            <div class="form-group">
-              <label for="targetSelect" class="form-label">Select Level:</label>
-              <select class="form-select" id="targetSelect">
-                <option value="target1">Target 1</option>
-                <option value="target2">Target 2</option>
-                <option value="target3">Target 3</option>
-                <option value="target4">Target 4</option>
-                <option value="target5">Target 5</option>
-              </select>
-            </div>
-          </div>
-
-          <div class="col-md-4">
-            <div class="form-group">
-              <label for="targetSelect" class="form-label">Select Holon:</label>
-              <select class="form-select" id="targetSelect">
-                <option value="target1">Target 1</option>
-                <option value="target2">Target 2</option>
-                <option value="target3">Target 3</option>
-                <option value="target4">Target 4</option>
-                <option value="target5">Target 5</option>
-              </select>
-            </div>
-          </div>
-
-          <div class="col-md-4">
-            <div class="form-group">
-              <label for="targetSelect" class="form-label">Select Agent:</label>
-              <select class="form-select" id="targetSelect">
-                <option value="target1">Target 1</option>
-                <option value="target2">Target 2</option>
-                <option value="target3">Target 3</option>
-                <option value="target4">Target 4</option>
-                <option value="target5">Target 5</option>
-              </select>
-            </div>
-          </div>
-
-          <div class="row"></div>
-          <div class="col-md-12"><a class="btn btn-primary col-md-12" id="getLogsBtn">get logs</a></div>
-
-          <div class="row">
-            <div class="col-md-12">
-              <div id="logContainer" style="max-height: 400px; overflow-y: auto;">
-                <table class="table">
-                  <thead>
-                    <tr>
-                      <th scope="col">Time</th>
-                      <th scope="col">Level</th>
-                      <th scope="col">Message</th>
-                    </tr>
-                  </thead>
-                  <tbody id="logTableBody">
-                    <!-- Log rows will be dynamically added here -->
-                    <tr>
-                      <td></td>
-                      <td></td>
-                    </tr>
-                    <tr>
-                      <td></td>
-                      <td></td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-
-        </div>
-        
-
-        <div class="row">
-          <div class="col-md-6">
-            <div id="logContainer">
-              <ul class="list-group" id="log-list">
-                <!-- logs go here -->
-              </ul>
-            </div>
-          </div>
-        </div>
-
-      </div>
-
-    </div>
 
     <div class="container-fluid pages" id="sim">
 
       <div class="row">
-        <!--<div class="col-md-1"></div>-->
-        <!--<div class="col-md-3">
-            <div class="container">
-            <div class ="row">
-                <div class="py-1">
-                <div class="col-md-12">
-                    <a class="btn btn-primary" href="#" > Show data </a>
-                </div>
-                </div>
-                <div class="py-1">
-                <div class="col-md-12">
-                    <a class="btn btn-primary" href="#" > Export Graph </a>
-                </div>
-                </div>
-            </div>
-                </div>
-        </div>-->
         
-        <div class="col-md-4">
-            <div id="map" style="height: 500px;"></div>
+        <div class="col-md-4" id="chartContainer">
+            <canvas id="chart" style="height: 300px; width: 300px;"> </canvas>
+            <div style="text-align:center"> Time (hours)</div>
         </div>
         
-        
-        
-        <div class="col-md-4">
-            <!--<canvas id="chart1" style="height: 400px; width: 400px;"> </canvas>-->
-            <div class="row">
-              <div class="col-md-4">
-                <button type="button" class="btn btn-primary btn-lg btn-block col-md-10" onclick="requestinfo('previous')">Previous</button>
-              </div>
-              <div class="col-md-4">
-                <div class="form-group col-md-10">
-                  <!--<label for="targetSelect" class="form-label"></label>-->
-                  <select class="form-select" id="targetSelect" onchange="selectLevel()">
-                    <option value="target1">Target 1</option>
-                    <option value="target2">Target 2</option>
-                    <option value="target3">Target 3</option>
-                    <option value="target4">Target 4</option>
-                    <option value="target5">Target 5</option>
-                  </select>
-                </div>
-              </div>
-              <div class="col-md-4" onclick="requestinfo('next')">
-                <button type="button" class="btn btn-primary btn-lg btn-block col-md-10">Next</button>
-              </div>
-            </div>
-            <div class="row">
-              <div class="col-md-12">
-                <div id="infoContainer" style="max-height: 600px; overflow-y: auto;">
-                  <table class="table">
-                    <thead>
-                      <tr>
-                        <th scope="col">Holon</th>
-                        <th scope="col">Parent</th>
-                        <th scope="col">Edit</th>
-                      </tr>
-                    </thead>
-                    <tbody id="infoTableBody">
-                      <!-- Log rows will be dynamically added here -->
-                      <tr>
-                        <td></td>
-                        <td></td>
-                      </tr>
-                      <tr>
-                        <td></td>
-                        <td></td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
+        <div class="col-md-4" id="chart2Container">
+            <canvas id="chart2" style="height: 300px; width: 300px;"> </canvas>
+            <div style="text-align:center"> PV Ratio </div>
         </div>
         
-        
-        
-        <div class="col-md-4">
-            <canvas id="chart" style="height: 600px; width: 400px;"> </canvas>
+        <div class="col-md-4" id="chart3Container">
+            <canvas id="chart3" style="height: 300px; width: 300px;"> </canvas>
+            <div style="text-align:center"> PV Ratio </div>
         </div>
+
       </div>
 
     </div>
 
   </div>
-    
+      
+  
+  <div class="modal fade" id="formModal" tabindex="-1" aria-labelledby="formModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="formModalLabel">Form</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <!-- Form content goes here -->
+        <div class="form-group">
+          <label for="holonID">Holon ID:</label>
+          <input type="text" class="form-control" id="holonID" placeholder="Enter Holon ID">
+        </div>
+        <div class="form-group">
+          <label for="parameterSelect">Select Parameter:</label>
+          <select class="form-control" id="typeSelect">
+            <option value="disconnection">Disconnect/Connect Holon</option>
+            <option value="no_thermal">Disable/Enable Thermal Generators</option>
+            <option value="demandRatio">Demand Ratio</option>
+            <option value="pvRatio">PV Ratio</option>
+            <option value="windValue">Wind Value</option>
+            <option value="thermalGeneration">Thermal Generation</option>
+            <option value="storage">Storage</option>
+          </select>
+        </div>
+        <div id="valueGroup" class="form-group" style="display: none;">
+            <label for="valueInput">Value:</label>
+            <input type="number" class="form-control" id="valueInput" placeholder="Enter Value">
+        </div>
+        <div id="powerGroup" class="form-group" style="display: none;">
+            <label for="powerInput">Power:</label>
+            <input type="number" class="form-control" id="powerInput" placeholder="Enter Power">
+        </div>
+        <div id="capacityGroup" class="form-group" style="display: none;">
+            <label for="capacityInput">Capacity:</label>
+            <input type="number" class="form-control" id="capacityInput" placeholder="Enter Capacity">
+        </div>
+        <div id="econGroup" class="form-group" style="display: none;">
+            <label for="ecoCost">Economic Cost:</label>
+            <input type="number" class="form-control" id="ecoCost" placeholder="Enter Economic Cost">
+        </div>
+        <div id="envGroup" class="form-group" style="display: none;">
+            <label for="envCost">Environmental Cost:</label>
+            <input type="number" class="form-control" id="envCost" placeholder="Enter Environmental Cost">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        <button type="button" class="btn btn-primary" id="applyChanges">Apply changes</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 
-  <!-- Latest compiled and minified JavaScript -->
+  
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.3/jquery.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/5.2.3/js/bootstrap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/5.2.3/js/bootstrap.min.js"></script>
 
-      <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.3/umd/popper.min.js" integrity="sha384-ZMP7rVo3mIykV+2+9J3UJ46jBk0WLaUAdn689aCwoqbBJiSnjAK/l8WvCWPIPm49" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.3/umd/popper.min.js" integrity="sha384-ZMP7rVo3mIykV+2+9J3UJ46jBk0WLaUAdn689aCwoqbBJiSnjAK/l8WvCWPIPm49" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="Mayotte Carte json.js"></script>
-    <!-- Make sure you put this AFTER Leaflet's CSS -->
-     <!-- Make sure you put this AFTER Leaflet's CSS -->
     <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js" integrity="sha256-WBkoXOwTeyKclOHuWtc+i2uENFpDZ9YPdf5Hf+D7ewM=" crossorigin=""></script>
+    <!--<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.4.0/jspdf.umd.min.js"></script>-->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/1.3.4/jspdf.min.js"></script>
     <script src="map.js"></script>
 </body>
 

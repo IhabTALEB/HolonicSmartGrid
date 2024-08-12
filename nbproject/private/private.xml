@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project-private xmlns="http://www.netbeans.org/ns/project-private/1">
+    <editor-bookmarks xmlns="http://www.netbeans.org/ns/editor-bookmarks/2" lastBookmarkId="0"/>
+    <open-files xmlns="http://www.netbeans.org/ns/projectui-open-files/2">
+        <group>
+            <file>file:/home/ihab/NetBeansProjects/HolonicSmartGrid/src/Agents/Holon/ControlAgent.java</file>
+            <file>file:/home/ihab/NetBeansProjects/HolonicSmartGrid/src/Utils/Control/MultiPhaseCWS.java</file>
+            <file>file:/home/ihab/NetBeansProjects/HolonicSmartGrid/src/Agents/Holon/DataAgent.java</file>
+            <file>file:/home/ihab/NetBeansProjects/HolonicSmartGrid/src/visualizer/main.html</file>
+            <file>file:/home/ihab/NetBeansProjects/HolonicSmartGrid/src/Utils/Control/Learner.java</file>
+            <file>file:/home/ihab/NetBeansProjects/HolonicSmartGrid/src/Utils/Agent/Messaging/Message/Offer.java</file>
+            <file>file:/home/ihab/NetBeansProjects/HolonicSmartGrid/src/Utils/Agent/Messaging/Loger.java</file>
+            <file>file:/home/ihab/NetBeansProjects/HolonicSmartGrid/src/Agents/Holon/MeasurementAgent.java</file>
+            <file>file:/home/ihab/NetBeansProjects/HolonicSmartGrid/src/Utils/Agent/Messaging/Message/Service.java</file>
+            <file>file:/home/ihab/NetBeansProjects/HolonicSmartGrid/src/Agents/Gateway.java</file>
+            <file>file:/home/ihab/NetBeansProjects/HolonicSmartGrid/src/Agents/Master.java</file>
+            <file>file:/home/ihab/NetBeansProjects/HolonicSmartGrid/src/Utils/Agent/Messaging/Message/Response.java</file>
+            <file>file:/home/ihab/NetBeansProjects/HolonicSmartGrid/src/Agents/Holon/SocialAgent.java</file>
+            <file>file:/home/ihab/NetBeansProjects/HolonicSmartGrid/src/Utils/SocketServer.java</file>
+            <file>file:/home/ihab/NetBeansProjects/HolonicSmartGrid/src/visualizer/map.js</file>
+            <file>file:/home/ihab/NetBeansProjects/HolonicSmartGrid/src/Agents/Holon/PredictionAgent.java</file>
+            <file>file:/home/ihab/NetBeansProjects/HolonicSmartGrid/src/Utils/Agent/Messaging/Sender.java</file>
+            <file>file:/home/ihab/NetBeansProjects/HolonicSmartGrid/src/Agents/Holon/LoggerAgent.java</file>
+            <file>file:/home/ihab/NetBeansProjects/HolonicSmartGrid/src/Utils/Control/CWS.java</file>
+        </group>
+    </open-files>
+</project-private>

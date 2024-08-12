@@ -4,6 +4,9 @@
  */
 package Agents.Holon;
 
+import Utils.Agent.Messaging.Message.Offer;
+import Utils.Agent.Messaging.Message.Response;
+import Utils.Agent.Messaging.Message.Service;
 import jade.core.AID;
 import jade.core.Agent;
 import jade.core.behaviours.CyclicBehaviour;
@@ -17,6 +20,16 @@ import org.json.simple.parser.ParseException;
 
 import Utils.Agent.Messaging.Reader;
 import Utils.Agent.Messaging.Sender;
+import Utils.Control.MultiPhaseCWS;
+import Utils.Control.PSO.PSOOptimizer;
+import Utils.Control.RLCWS;
+import jade.lang.acl.UnreadableException;
+import java.io.IOException;
+import java.io.Serializable;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  *
@@ -25,14 +38,36 @@ import Utils.Agent.Messaging.Sender;
 public class ControlAgent extends Agent{
 
 
-    Object[] args;// = getArguments();
+    Object[] args;
 
-    String id;// = args[0].toString();
+    String id;
+    String upperHolonMain;
     String upperHolon;
+    Boolean disconnected;
+    Boolean no_thermal;
+    double theoreticalbatcapacity;
+    double batcapacity;
+    double batpow;
+    double modDemand;
+    double modPV;
+    double modWind;
+    
+    double PVEcon=0;
+    double PVEnv=0;
+    double windEcon=0;
+    double windEnv=0;
+    double thermalEcon=0;
+    double thermalEnv=0;
+    double stoEcon=0;
+    double stoEnv=0;
+    
     List<Object> children;
     JSONObject Data = new JSONObject();
     double thermal;
-    //String upperHolon;
+    double originalThermal;
+    
+    double resultThermal, resultPV, resultStorage, totalDemands;
+    
     
     Reader reader;
     Sender sender;
@@ -41,31 +76,48 @@ public class ControlAgent extends Agent{
 
     protected void setup(){
         
+        disconnected = false;
+        no_thermal = false;
+        
         args = getArguments();
         System.out.println(Arrays.toString(args));
         id = args[0].toString();
-        thermal = Double.parseDouble(args[2].toString());
+        originalThermal = Double.parseDouble(args[4].toString());
+        thermal = originalThermal;
         
-        //upperHolon = args[1].toString();
+        upperHolonMain = args[1].toString();
         upperHolon = args[1].toString();
-//        children = Arrays.asList(args[2]);
-
-//        JSONObject jsonreq = new JSONObject();
-//        jsonreq.put("senderId", id);
-//        jsonreq.put("data", "request");
-//        jsonreq.put("timestep", 0);
-//        String msg = JSONValue.toJSONString(jsonreq);
-//        ACLMessage message = new ACLMessage(ACLMessage.REQUEST);
-//        message.addReceiver(new AID(id+"_meas", AID.ISLOCALNAME));
-//        message.setContent(msg);
-//        send(message);
-//        System.out.println(id + "_cont : data requested");
-
+        theoreticalbatcapacity = Double.parseDouble(args[7].toString());
+        batcapacity = 0.9*theoreticalbatcapacity;
+        batpow = Double.parseDouble(args[8].toString());
+    
         
-
+        PVEcon = Double.parseDouble(args[2].toString());
+        PVEnv = Double.parseDouble(args[3].toString());
+        windEcon = 0;//Double.parseDouble(args[2].toString());
+        windEnv = 0;//Double.parseDouble(args[3].toString());
+        thermalEcon = Double.parseDouble(args[5].toString());
+        thermalEnv = Double.parseDouble(args[6].toString());
+        stoEcon = Double.parseDouble(args[9].toString());
+        stoEnv = Double.parseDouble(args[10].toString());
+        
+        
         reader = new Reader();
         sender = new Sender(id);
+        
+        double demandCost = -0.1;
+        double battCost = (65.406*1000000)/(365*3600);
+        double PVCost = (0.364*1000000)/(365*3600);
+        double thermalCost = (63.406*1000000)/(365*3600);
 
+        double[] prod = new double[2];
+        double[] sto = new double[2];
+        
+        
+
+        
+        
+        
 
         addBehaviour(new CyclicBehaviour(){
             
@@ -77,207 +129,168 @@ public class ControlAgent extends Agent{
             int receivedTimestep = 0;
             double allDemand = 0;
             double allPV = 0;
-            //double thermal;
             
             double PV = 0;
             double localPV = 0;
             double Demand = 0;
             double localDemand = 0;
             int nummm =0;
+            
+            double batrequested = (batpow < batcapacity) ? batpow : batcapacity;
+            double batavailable = 0;
+            double batstocked = 0;
+            
+            Service thermalInfo;// = new Service(id, 0, thermal, 0, 0);
+            Service storageInfo;// = new Service(id, batavailable, batrequested, 0, 0);// min is -available and max is +energy requested 
+            
+            Offer offer;// = new Offer();
+            Offer receivedOffer;
+            Response receivedResponse;
+            
+            
+            Map<String, String> subGen = new HashMap();
+            Map<String, Service> substo = new HashMap();
 
-              //////////////////////////////////////////////////////////////////////////////////
-             ///    We need three variables, * 2 : local, locaglobal with children,all      ///
-            //////////////////////////////////////////////////////////////////////////////////
+            Map<String, String> localGenNAT;// = new HashMap();
+            Map<String, String> localStoNAT;// = new HashMap();
+            
+            //Map<String, String> tempGenNAT;// = new HashMap();
+            //Map<String, String> tempStoNAT;// = new HashMap();
+
             
             @Override
             public void action(){
+                String senderId= id;
+                JSONObject receivedJSON;
 
-
-                double totalsubdemands = 0;
-
-                //ACLMessage receivedMsg = receive();
                 ACLMessage receivedMsg = blockingReceive();//
                 String data;
                 if(receivedMsg!=null){
 
-                    if(id.equals("Handréma")){
-                        System.out.println("$$$$$$$$$$$$$$$$$$ MESSAGEEEEEEEE in timestep : " + timestep + "  msg is" + receivedMsg);
+                    try{
+                        String content = receivedMsg.getContent();
+                        data = receivedMsg.getContent();
+                        receivedJSON = JSONParse(data);
+                        senderId = (String) receivedJSON.get("senderId");
+                        // Handle string content
+                    }catch(Exception e){
+                        receivedJSON = new JSONObject();
                     }
-                    
-                    data = receivedMsg.getContent();
-                    JSONObject receivedJSON = JSONParse(data);
-                    String senderId= "";
-                    
-                    //System.out.println("??????????????????????????????????????? "+receivedMsg.getPerformative()+" ??????????????????????????????????????????????,");
-                    senderId = (String) receivedJSON.get("senderId");
-                    
                     
                     switch(receivedMsg.getPerformative()){
                         case ACLMessage.REQUEST:
-                            System.out.println(id + "_cont received REQUEST from sender : "+ receivedJSON);
-                            System.out.println("received REQUEST from sender : "+ senderId + ", and value is "+ senderId.equals(id + "_data"));//"_meas"
-                            receivedTimestep = ((Long) receivedJSON.get("timestep")).intValue();
-                            if(id.equals("Mayotte")){
-                                System.out.println("_______________________________nummm : " + nummm + " and condition is " + (receivedTimestep == timestep) + " for receivedTimestep = " + receivedTimestep +" and timestep = " + timestep + "json is" + receivedJSON);
+                        
+                            try {
+                                receivedOffer = (Offer) receivedMsg.getContentObject();
+                            } catch (UnreadableException ex) {
+                                Logger.getLogger(ControlAgent.class.getName()).log(Level.SEVERE, null, ex);
                             }
+                        
+                            senderId = receivedOffer.senderId;
+                            
+                            //receivedTimestep = ((Long) receivedJSON.get("timestep")).intValue();
+                            this.receivedTimestep = receivedOffer.timestep;
+                            
                             if(this.receivedTimestep == timestep)
                             {
-                                PV = (Double) receivedJSON.get("PV");
-                                if(id.equals("Mayotte")){
-                                    System.out.println("_______________________________OLD Demands in REQUEST is : " + Demands);
+                                offer.totalPVs += receivedOffer.totalPVs;
+                                offer.totalDemands += receivedOffer.totalDemands;
+                                offer.totalWinds += receivedOffer.totalWinds;
+                                
+                                receivedOffer.GenNAT.forEach(localGenNAT::putIfAbsent);
+                                receivedOffer.StoNAT.forEach(localStoNAT::putIfAbsent);
+                                
+                                receivedOffer.GenList.forEach(offer.GenList::putIfAbsent);
+                                receivedOffer.StoList.forEach(offer.StoList::putIfAbsent);
+                                
+                                for (Map.Entry<String, String> entry : receivedOffer.GenNAT.entrySet()) {
+                                    offer.GenNAT.put(entry.getKey(), id);
                                 }
-                                Demand = (Double) receivedJSON.get("Demand");
-                                //request = (Double) receivedJSON.get("Demand");
-                                PVs+= PV;
-                                allPV += (Double) receivedJSON.get("allPV");
-                                Demands+=Demand;
-                                if(id.equals("Mayotte")){
-                                    System.out.println("______________________________NEW Demands : " + Demands + "WHile Demand from REQUEST is :" + Demand);
+                                
+                                for (Map.Entry<String, String> entry : receivedOffer.StoNAT.entrySet()) {
+                                    offer.StoNAT.put(entry.getKey(), id);
                                 }
-                                allDemand += (Double) receivedJSON.get("allDemand");
-                                if(id.equals("Mayotte")){
-                                    System.out.println("______________________________NEW allDemand : " + allDemand + "WHile Demand  from REQUEST is :" + Demand);
-                                }
-                                //confirm right timestep
-//                                JSONObject JSONObj;
-//
-//                                JSONObj=new JSONObject();
-//
-//                                JSONObj.put("timestep",this.timestep);//timestep
-//                                JSONObj.put("senderId",id);//
-//                                JSONObj.put("targetId",senderId);//
-//
-//                                JSONObj.put("type", ACLMessage.AGREE);
-//
-//                                String JSONString=JSONValue.toJSONString(JSONObj);
-//
-//                                ACLMessage message = new ACLMessage(ACLMessage.AGREE);
-//                                message.addReceiver(new AID(id+"_soc", AID.ISLOCALNAME));
-//                                message.setContent(JSONString);
-//                                send(message);
                                 
                                 send(sender.reset().put("timestep",this.timestep).put("senderId",id).put("targetId",senderId).put("type", ACLMessage.AGREE).prepare(id+"_soc", ACLMessage.AGREE));
-                                
-                                nummm++;
                             }
-                            else{//wrong timestep
-                                System.out.println("_______________________________nummm : wrong  " + nummm + " and condition is " + (this.receivedTimestep == this.timestep) + " for receivedTimestep = " + this.receivedTimestep +" and timestep = " + this.timestep + "json is" + receivedJSON);
-//                                JSONObject JSONObj;
-//
-//                                JSONObj=new JSONObject();
-//
-//                                JSONObj.put("timestep",this.timestep);//timestep
-//                                JSONObj.put("senderId",id);//
-//                                JSONObj.put("targetId",senderId);//
-//
-//                                JSONObj.put("type", ACLMessage.REFUSE);
-//
-//                                String JSONString=JSONValue.toJSONString(JSONObj);
-//
-//                                ACLMessage message = new ACLMessage(ACLMessage.INFORM);
-//                                message.addReceiver(new AID(id+"_soc", AID.ISLOCALNAME));
-//                                message.setContent(JSONString);
-//                                send(message);
+                            else{//if wrong timestep
+                                System.out.println("wrong timestep " + nummm + " and condition is " + (this.receivedTimestep == this.timestep) + " for receivedTimestep = " + this.receivedTimestep +" and timestep = " + this.timestep + " sender is " + receivedOffer.senderId + " target is " + receivedOffer.targetId + " receiver is " + id);
                             }
                             break;
+
                         case ACLMessage.INFORM:
-                            //senderId = (String) receivedJSON.get("senderId");
-                            //String[] addressArr = receivedMsg.getSender().getAddressesArray();
-                            //System.out.println(addressArr[0]);
-                            //String sender =addressArr[1];
-                            System.out.println(id + "_cont received INFORM from sender : "+ receivedJSON);
-                            System.out.println(id + "_cont : received INFORM from sender : "+ senderId + ", and condition (data) is "+ senderId.equals(id + "_data"));//"_meas"
                             if (senderId!=null && senderId.equals(id + "_data")){//"_meas"
-                                System.out.println(id + " _cont :  data received ; " + receivedJSON);
-                                // Inform can only be sent inside the same Holon!
-                                this.receivedTimestep = ((Long) receivedJSON.get("timestep")).intValue();
-                                //if (receivedTimestep == timestep){
-                                    //System.out.println("*************************** :" + receivedJSON);
+                                this.receivedTimestep = ((Long) receivedJSON.get("timestep")).intValue();// is it needed ??
                                     localPV = (Double) receivedJSON.get("PV");
-                                    allPV += localPV;
-                                    PVs+= localPV;
                                     localDemand = (Double) receivedJSON.get("Demand");
-                                    if(id.equals("Mayotte")){
-                                        System.out.println("______________________________NEW localDemand from INFORM is: " + localDemand);
-                                    }
-                                    if(id.equals("Mayotte")){
-                                        System.out.println("______________________________OLD allDemand : " + allDemand );
-                                    }
-                                    allDemand += localDemand;
-                                    if(id.equals("Mayotte")){
-                                        System.out.println("______________________________NEW allDemand : " + allDemand + "WHile localDemand  from INFORM is :" + localDemand);
-                                    }
-                                    if(id.equals("Mayotte")){
-                                        System.out.println("______________________________OLD Demands : " + Demands );
-                                    }
-                                    Demands += localDemand;
-                                    if(id.equals("Mayotte")){
-                                        System.out.println("______________________________NEW Demands : " + Demands + "WHile localDemand  from INFPORM is :" + localDemand);
-                                    }
-                                    if(id.equals("Mayotte")){
-                                        System.out.println("______________________________OLDtotallocal : " + totallocal);
-                                    }
-                                    totallocal = localPV - localDemand;
-                                    if(id.equals("Mayotte")){
-                                        System.out.println("______________________________NEW totallocal : " + totallocal + "WHile Demand  from localDemand is :" + localDemand);
-                                    }
-                                //}
+                                    offer.totalPVs += localPV;
+                                    offer.totalDemands += localDemand;
+                                    offer.totalWinds = 0;
                             }
                             else{
                                 String state = (String) receivedJSON.get("state");
-                                System.out.println(id + "_cont : state is : " + state + " " + upperHolon + "allReady".equals("state"));
+                                String request = (String) receivedJSON.get("request");
                                 if ("allReady".equals(state)){
-                                    
-                                    if(id.equals("Handréma")){
-                                            System.out.println("$$$$$$$$$$$$$$$$$$ allReady in timestep : " + timestep);
-                                        }
-                                    
-                                    //if(upperHolon == null){
+                                    allDemand = localDemand + Demands;
+                                    allPV = localPV + PVs;
+
                                     if(upperHolon.equals("none")){
                                         
-                                        System.out.println(id + "_cont : 'allready' receieved from " + id + "_soc");
-                                        sendMsg(this.timestep, id, thermal + allPV, allDemand, thermal + allPV, allDemand, "children", ACLMessage.PROPOSE);//localPV, localDemand, PVs ,Demands //localPV + //localDemand + 
-                                        System.out.println(id + "_cont : feedback sent from upper holon with allDemand is : "+ allDemand + " and allgeneration is : " + (thermal + allPV));
+                                        MultiPhaseCWS control = new MultiPhaseCWS(offer);
+                                        Response response = control.decide(offer);
                                         
                                         
-                                        double energytransmitted=0;
-                                        if((thermal + allPV) > allDemand){
-                                            energytransmitted = allDemand;
+                                        resultThermal=0;
+                                        resultStorage = 0;
+                                        for (Map.Entry<String, Double> entry : response.GenResp.entrySet()) {
+                                            resultThermal += entry.getValue();
                                         }
-                                        else{
-                                            energytransmitted = thermal + allPV;
+                                        for (Map.Entry<String, Double> entry : response.StoResp.entrySet()) {
+                                            resultStorage += entry.getValue();
+                                                batstocked+=entry.getValue();
+                                                batrequested = (batpow < batcapacity-batstocked) ? batpow : batcapacity-batstocked;
+                                                batavailable = (batstocked < batpow) ? batstocked : batpow;
+                                            System.out.println(entry.getKey() + " : " + entry.getValue());
                                         }
-                                        
-                                        
-//                                        JSONObject JSONObj =new JSONObject();
-//
-//                                        JSONObj.put("timestep",this.timestep);//timestep
-//                                        JSONObj.put("senderId",id);
-//                                        JSONObj.put("allDemand", allDemand);// can be positive or negative  //* (1-feedback))
-//                                        JSONObj.put("allReceived",energytransmitted);// can be positive or negative
-//                                        JSONObj.put("allRenw", energytransmitted);// can be positive or negative //thermal + allPV - 
-//                                        JSONObj.put("feedback", -1);// can be positive or negative
-//
-//                                        String JSONString=JSONValue.toJSONString(JSONObj);
-//
-//                                        ACLMessage message = new ACLMessage(ACLMessage.INFORM_IF);
-//                                        message.addReceiver(new AID(id+"_data", AID.ISLOCALNAME));
-//                                        message.setContent(JSONString);
-//                                        send(message);
                                         
                                         
                                         send(sender.reset()
-                                                .put("timestep",this.timestep)
-                                                .put("senderId",id)
-                                                .put("allDemand", allDemand)
-                                                .put("allReceived",energytransmitted)
-                                                .put("allRenw", energytransmitted)
-                                                .put("feedback", -1)
-                                                .prepare(id+"_data", ACLMessage.INFORM_IF));
+                                            .put("timestep",this.timestep)
+                                            .put("senderId",id)//.put("allDemand", allDemand)
+                                            .put("allDemand", offer.totalDemands)
+                                            .put("LocalBatteryStocked",0.1*theoreticalbatcapacity+batstocked)
+                                            .put("allReceived", response.DemandRatio*offer.totalDemands)
+                                            .put("DemandRatio", response.DemandRatio)
+                                            .put("PVRatio", response.PVRatio)
+                                            .put("impactCarbon", response.ImpactCarbon)
+                                            .put("bestPhase", response.bestPhase)
+                                            .prepare(id+"_data", ACLMessage.INFORM_IF));
                                         
                                         
-                                        System.out.println("*********************************************************************allReceived"+allPV);
-                                        System.out.println("*********************************************************************allRenw"+ (allPV - allDemand));
+                                        
+                                        offer = new Offer(id,  "upper", timestep+1);
+
+                                        offer.PVEconCost = PVEcon;
+                                        offer.PVEnvCost = PVEnv;
+                                        offer.WindEconCost = windEcon;
+                                        offer.WindEnvCost = windEnv;
+                                        
+                                        if(thermal>0){
+                                            thermalInfo = new Service(id, 0, thermal, thermalEcon, thermalEnv);
+                                            offer.GenList.put("thermal_"+id, thermalInfo);
+                                            offer.GenNAT.put("thermal_"+id, id);//id to be changed with th value of the receiving holon before sending (like NAT)
+                                        }
+                                        else
+                                            ;//thermalInfo = null;
+                                        if(batpow>0){
+                                            storageInfo = new Service(id, -batavailable, batrequested, stoEcon, stoEnv);// min is -available and max is rrequested storage...with negative cost
+                                            offer.StoList.put("Storage_"+id, storageInfo);
+                                            offer.StoNAT.put("Storage_"+id, id);//id to be changed with th value of the receiving holon before sending (like NAT)
+                                        }
+                                        else
+                                            ;//storageInfo = null;
+                                        
+                                        //batstocked += (LS_Sto[1] < 0) ? (LS_Sto[1] * batavailable) : (LS_Sto[1] * batrequested);
                                         
                                         this.timestep++;
                                         localDemand = 0;
@@ -287,182 +300,241 @@ public class ControlAgent extends Agent{
                                         allDemand = 0;
                                         allPV = 0;
                                         nummm=0;
+                                        
+                                        
+                                        send(sender.reset().put("senderId", id).put("data", "request").put("timestep", this.timestep).prepare(id+"_data",ACLMessage.REQUEST));
+                                        //send result to children
+                                        
+                                        
+                                        
+                                        
+                                        response.senderId = id;
+                                        response.targetId = "children";
+                                        response.GenNAT.putAll(localGenNAT);
+                                        response.StoNAT.putAll(localStoNAT);
+//                                        localGenNAT.forEach(response.GenNAT::putIfAbsent);
+//                                        localStoNAT.forEach(response.StoNAT::putIfAbsent);
+                                        response.type = ACLMessage.PROPOSE;
+                                        
+                                        
+                                        
+                                        ACLMessage message = new ACLMessage(ACLMessage.INFORM);
+                                        message.addReceiver(new AID(id+"_soc", AID.ISLOCALNAME));
+                                        try {
+                                            message.setContentObject((Serializable) response);
+                                        } catch (IOException ex) {
+                                            Logger.getLogger(ControlAgent.class.getName()).log(Level.SEVERE, null, ex);
+                                        }
+                                         send(message);
+                                        
+                                         response = new Response();
+                                         
+                                         
+                                        if(!disconnected) upperHolon = upperHolonMain;
+                                        send(sender.reset().put("senderId", id).put("data", "request").put("timestep", this.timestep).prepare(id+"_data",ACLMessage.REQUEST));
+//                                        if(id.equals("Mamoudzou") && (timestep > 14)) upperHolon = "Mayotte";
                                     }
                                     else{
-                                        if(id.equals("Koungou")){
-                                            System.out.println("$$$$$$$$$$$$$$$$$$ ThERMAL in timestep : " + timestep + " is " + thermal);
+                                        offer.senderId = id;
+                                        offer.targetId = "upper";
+                                        offer.type = ACLMessage.REQUEST;
+                                        ACLMessage message = new ACLMessage(ACLMessage.INFORM);
+                                        message.addReceiver(new AID(id+"_soc", AID.ISLOCALNAME));
+                                        try {
+                                            message.setContentObject((Serializable) offer);
+                                        } catch (IOException ex) {
+                                            Logger.getLogger(ControlAgent.class.getName()).log(Level.SEVERE, null, ex);
                                         }
-                                        sendMsg(this.timestep, id, thermal + allPV, allDemand, thermal+allPV, allDemand, "upper", ACLMessage.REQUEST);//sendMsg //localDemand + 
-                                        System.out.println(id + "_cont : Request sent to upper holons");
+                                         send(message);
+                                         
                                         nummm=0;
-                                        //timestep++;
                                     }
                                 }else{
                                     if("start".equals(state)){
-                                        
-                                        //System.out.println("??????????????????????????????????????? "+ state +" ??????????????????????????????????????????????,");
-//                                        JSONObject jsonreq = new JSONObject();
-//                                        jsonreq.put("senderId", id);
-//                                        jsonreq.put("data", "request");
-//                                        jsonreq.put("timestep", this.timestep);
-//                                        String msg = JSONValue.toJSONString(jsonreq);
-//                                        ACLMessage message = new ACLMessage(ACLMessage.REQUEST);
-//                                        message.addReceiver(new AID(id+"_data", AID.ISLOCALNAME));
-//                                        message.setContent(msg);
-//                                        send(message);
-                                        
                                         send(sender.reset().put("senderId", id).put("data", "request").put("timestep", this.timestep).prepare(id+"_data", ACLMessage.REQUEST));
+                                        offer = new Offer(id, "upper", timestep);
                                         
-                                        System.out.println(id + "_cont : data requested from "+ id+"_data");
+                                        offer.PVEconCost = PVEcon;
+                                        offer.PVEnvCost = PVEnv;
+                                        offer.WindEconCost = windEcon;
+                                        offer.WindEnvCost = windEnv;
+                                        
+                                        localGenNAT = new HashMap();
+                                        localStoNAT = new HashMap();
+                                        if(thermal>0){
+                                            thermalInfo = new Service(id, 0, thermal, thermalEcon, thermalEnv);
+                                            offer.GenList.put("thermal_"+id, thermalInfo);
+                                            offer.GenNAT.put("thermal_"+id, id);//id to be changed with th value of the receiving holon before sending (like NAT)
+                                        }
+                                        else
+                                            ;//thermalInfo = null;
+                                        if(batpow>0){
+                                            storageInfo = new Service(id, -batavailable, batrequested, stoEcon, stoEnv);// min is -available and max is rrequested storage...with negative cost
+                                            offer.StoList.put("Storage_"+id, storageInfo);
+                                            offer.StoNAT.put("Storage_"+id, id);//id to be changed with th value of the receiving holon before sending (like NAT)
+                                        }
+                                        else
+                                            ;//storageInfo = null;
+                                    }
+                                    else{
+                                        if("mod".equals(request)){
+                                            //apply changes here
+                                            String type = (String) receivedJSON.get("type");
+                                            double value;
+                                            double powerInput;
+                                            double capacityInput;
+                                            switch(type){
+                                                case "disconnection":
+                                                    disconnected = !disconnected;
+                                                    break;
+                                                case "no_thermal":
+                                                    no_thermal = !no_thermal;
+                                                    break;
+                                                case "demandRatio":
+                                                    modDemand = (Double) receivedJSON.get("value");
+                                                    break;
+                                                case "pvRatio":
+                                                    modPV = (Double) receivedJSON.get("value");
+                                                    PVEcon = (Double) receivedJSON.get("ecoCost");
+                                                    PVEnv = (Double) receivedJSON.get("envCost");
+                                                    break;
+                                                case "windValue":
+                                                    modWind = (Double) receivedJSON.get("value");
+                                                    windEcon = (Double) receivedJSON.get("ecoCost");
+                                                    windEnv = (Double) receivedJSON.get("envCost");
+                                                    break;
+                                                case "thermalGeneration":
+                                                    originalThermal = (Double) receivedJSON.get("value");
+                                                    thermalEcon = (Double) receivedJSON.get("ecoCost");
+                                                    thermalEnv = (Double) receivedJSON.get("envCost");
+                                                    break;
+                                                case "storage":
+                                                    batpow = (Double) receivedJSON.get("powerInput");
+                                                    batcapacity = (Double) receivedJSON.get("capacityInput");
+                                                    stoEcon = (Double) receivedJSON.get("ecoCost");
+                                                    stoEnv = (Double) receivedJSON.get("envCost");
+                                                    break;
+                                            }
+                                        }
                                     }
                                 }
                             }
                             break;
                         case ACLMessage.PROPOSE:
-                            // We don't have PROPOSE in IoE, it is only requests and demands. 
-                            
-                            ////
-                            // (Send request to data and then) receive values from data and then send request and wait for response and/or directly send broadcast feedback to lowers
-                            ////
+                            if(!upperHolon.equals("none")){
+                        try {
+                            receivedResponse = (Response) receivedMsg.getContentObject();
+                        } catch (UnreadableException ex) {
+                            Logger.getLogger(ControlAgent.class.getName()).log(Level.SEVERE, null, ex);
+                        }
+                                senderId = receivedResponse.senderId;
+                                receivedTimestep = receivedResponse.timestep;
+                                if((this.receivedTimestep==timestep)&&(!receivedResponse.equals(null))){
 
-                              ////////////////////////////////////////////////////////
-                             /// WE NEED IT ANYWAY, BUT NO NEGOTITATIONS AT FIRST ///
-                            ////////////////////////////////////////////////////////
+                                    senderId = receivedResponse.senderId;
 
-                            
-                            
-                            
-                            //System.out.println("received PROPOSE from sender : "+ senderId + ", and value is "+ senderId.equals(id + "_meas"));
-                            senderId = (String) receivedJSON.get("senderId");
-                            // if senderId == upperId
-                            double feedback=0;
-                            try{
-                                feedback = ((Number)receivedJSON.get("feedback")).doubleValue();
+
+                                    resultThermal=0;
+                                    resultStorage = 0;
+                                    for (Map.Entry<String, Double> entry : receivedResponse.GenResp.entrySet()) {
+                                        resultThermal += entry.getValue();
+                                    }
+                                    for (Map.Entry<String, Double> entry : receivedResponse.StoResp.entrySet()) {
+                                        resultStorage += entry.getValue();
+//                                        if(!localStoNAT.containsKey(entry.getKey())){
+                                            batstocked+=entry.getValue();
+                                            batrequested = (batcapacity-batstocked < batpow) ? batcapacity-batstocked : batpow;
+                                            batavailable = (batstocked < batpow) ? batstocked : batpow;
+                                    }
+
+
+                                    send(sender.reset()
+                                            .put("timestep",this.timestep)
+                                            .put("senderId",id)//.put("allDemand", allDemand)
+                                            .put("allDemand", offer.totalDemands)
+                                            .put("LocalBatteryStocked",0.1*theoreticalbatcapacity+batstocked)
+                                            .put("allReceived", receivedResponse.DemandRatio*offer.totalDemands)
+                                            .put("DemandRatio", receivedResponse.DemandRatio)
+                                            .put("PVRatio", receivedResponse.PVRatio)
+                                            .put("impactCarbon", receivedResponse.ImpactCarbon)
+                                            .put("bestPhase", receivedResponse.bestPhase)
+                                            .prepare(id+"_data", ACLMessage.INFORM_IF));
+                                    
+                                    
+                                    
+
+                                    
+                                    offer = new Offer(id,  "upper", timestep+1);
+
+                                    offer.PVEconCost = PVEcon;
+                                    offer.PVEnvCost = PVEnv;
+                                    offer.WindEconCost = windEcon;
+                                    offer.WindEnvCost = windEnv;
+                                    
+
+                                    if(thermal>0){
+//                                        if(!(id.equals("Koungou") && (timestep+1 > 5) && (timestep+1 < 14))){//5 14
+//                                            thermalInfo = new Service(id, 0, thermal, thermalEcon, thermalEnv);
+//                                            offer.GenList.put("thermal_"+id, thermalInfo);
+//                                            offer.GenNAT.put("thermal_"+id, id);//id to be changed with th value of the receiving holon before sending (like NAT)
+//                                        }
+                                        if(!no_thermal){//5 14
+                                            thermalInfo = new Service(id, 0, thermal, thermalEcon, thermalEnv);
+                                            offer.GenList.put("thermal_"+id, thermalInfo);
+                                            offer.GenNAT.put("thermal_"+id, id);//id to be changed with th value of the receiving holon before sending (like NAT)
+                                        }
+                                        else{
+                                            thermalInfo = new Service(id, 0, 1, thermalEcon, thermalEnv);
+                                            offer.GenList.put("thermal_"+id, thermalInfo);
+                                            offer.GenNAT.put("thermal_"+id, id);//id to be changed with th value of the receiving holon before sending (like NAT)
+                                        }
+                                    }
+                                    else
+                                        ;//thermalInfo = null;
+                                    if(batpow>0){
+                                        storageInfo = new Service(id, -batavailable, batrequested, stoEcon, stoEnv);// min is -available and max is rrequested storage...with negative cost
+                                        offer.StoList.put("Storage_"+id, storageInfo);
+                                        offer.StoNAT.put("Storage_"+id, id);//id to be changed with th value of the receiving holon before sending (like NAT)
+                                    }
+                                    else
+                                        ;
+
+                                    this.timestep++;
+                                    localDemand = 0;
+                                    Demands = 0;
+                                    localPV = 0;
+                                    PVs = 0;
+                                    allDemand = 0;
+                                    allPV = 0;
+                                    this.nummm++;
+                                    
+                                    
+                                    receivedResponse.senderId = id;
+                                    receivedResponse.targetId = "children";
+                                    receivedResponse.GenNAT.putAll(localGenNAT);
+                                    receivedResponse.StoNAT.putAll(localStoNAT);
+                                    receivedResponse.type = ACLMessage.PROPOSE;
+                                    ACLMessage message = new ACLMessage(ACLMessage.INFORM);//ACLMessage.PROPOSE
+                                    message.addReceiver(new AID(id+"_soc", AID.ISLOCALNAME));
+                                    try {
+                                        message.setContentObject((Serializable) receivedResponse);
+                                    } catch (IOException ex) {
+                                        Logger.getLogger(ControlAgent.class.getName()).log(Level.SEVERE, null, ex);
+                                    }
+                                     send(message);
+                                     
+                                     
+                                    receivedResponse = new Response();
+                                    
+                                    if(disconnected) upperHolon = "none";
+                                    send(sender.reset().put("senderId", id).put("data", "request").put("timestep", this.timestep).prepare(id+"_data",ACLMessage.REQUEST));
+                                }
+                                else {
+                                }
                             }
-                            catch(Exception e){
-                                System.out.println("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$ " + receivedJSON);
-                            }
-                            double totalPV = localPV + PVs;
-                            double totaldemand = localDemand + Demands;
-                            double totalrequested = totaldemand - totalPV;
-                            System.out.println("["+ id +" : "+ timestep +"] Available Renewable Energy: " + totalPV);
-                            System.out.println("["+ id +" : "+ timestep +"] Requested Energy: " +  totalrequested);
-                            System.out.println("["+ id +" : "+ timestep +"] Receieved Energy: " + (totalrequested * (1-feedback)));
+                                break;
                             
-                            
-                            
-//                            JSONObject JSONObj;
-//
-//                            JSONObj=new JSONObject();
-//
-//                            JSONObj.put("timestep",this.timestep);//timestep
-//                            JSONObj.put("senderId",id);//
-//                            JSONObj.put("targetId","children");//
-//                            JSONObj.put("feedback",feedback);// can be positive or negative
-//                            
-//                            JSONObj.put("type", ACLMessage.PROPOSE);//PROPOSE
-//
-//                            String JSONString=JSONValue.toJSONString(JSONObj);
-//
-//                            ACLMessage message = new ACLMessage(ACLMessage.INFORM);
-//                            message.addReceiver(new AID(id+"_soc", AID.ISLOCALNAME));
-//                            message.setContent(JSONString);
-//                            send(message);
-                            
-                            send(sender.reset().put("timestep",this.timestep).put("senderId",id).put("targetId","children").put("feedback",feedback).put("type", ACLMessage.PROPOSE).prepare(id+"_soc", ACLMessage.INFORM));
-                            
-//                            JSONObj=new JSONObject();
-//
-//                            JSONObj.put("timestep",this.timestep);//timestep
-//                            JSONObj.put("senderId",id);
-//                            JSONObj.put("allDemand", allDemand);// can be positive or negative  //* (1-feedback))
-//                            JSONObj.put("allReceived", allDemand * feedback);// can be positive or negative
-//                            JSONObj.put("feedback", feedback);// can be positive or negative
-//                            
-//                            JSONString=JSONValue.toJSONString(JSONObj);
-//
-//                            message = new ACLMessage(ACLMessage.INFORM_IF);
-//                            message.addReceiver(new AID(id+"_data", AID.ISLOCALNAME));
-//                            message.setContent(JSONString);
-//                            send(message);
-                            
-                            send(sender.reset().put("timestep",this.timestep).put("senderId",id).put("allDemand", allDemand).put("allReceived", allDemand * feedback).put("feedback",feedback).prepare(id+"_data", ACLMessage.INFORM_IF));
-                            
-                            
-                            this.timestep++;
-                            totalPV = 0;
-                            totaldemand = 0;
-                            totalrequested = 0;
-                            allDemand = 0;
-                            allPV = 0;
-                            
-                            Demands =0;
-                            PVs=0;
-                            
-                            
-                            //////////////////////////////////////
-                            //show and forward
-                            ///////////////////
-
-                            
-//                            JSONObject jsonreq = new JSONObject();
-//                            jsonreq.put("senderId", id);
-//                            jsonreq.put("data", "request");
-//                            jsonreq.put("timestep", this.timestep);
-//                            String msg = JSONValue.toJSONString(jsonreq);
-//                            ACLMessage reqMessage = new ACLMessage(ACLMessage.REQUEST);
-//                            reqMessage.addReceiver(new AID(id+"_data", AID.ISLOCALNAME));
-//                            reqMessage.setContent(msg);
-//                            send(reqMessage);
-                            
-                            send(sender.reset().put("senderId", id).put("data", "request").put("timestep", this.timestep).prepare(id+"_data",ACLMessage.REQUEST));
-                            
-                            System.out.println(id + "_cont : data requested from "+ id+"_data");
-                            
-                            break;
                         case ACLMessage.REFUSE:
-                            
-//                            JSONObj=new JSONObject();
-//                            
-//                            JSONObj.put("timestep",this.timestep);//timestep
-//                            JSONObj.put("senderId",id);
-//                            JSONObj.put("allReceived", 0);// can be positive or negative  //* (1-feedback))
-//                            JSONObj.put("allRenw", 0);// can be positive or negative
-//                            JSONObj.put("feedback", -1);// can be positive or negative
-//                            
-//                            JSONString=JSONValue.toJSONString(JSONObj);
-//
-//                            message = new ACLMessage(ACLMessage.INFORM_IF);
-//                            message.addReceiver(new AID(id+"_data", AID.ISLOCALNAME));
-//                            message.setContent(JSONString);
-//                            send(message);
-                            
-                            send(sender.reset().put("timestep",this.timestep).put("senderId",id).put("allReceived", 0).put("allRenw", 0).put("feedback", -1).prepare(id+"_data", ACLMessage.INFORM_IF));
-                            
-                            this.timestep = ((Long) receivedJSON.get("timestep")).intValue();;
-                            totalPV = 0;
-                            totaldemand = 0;
-                            totalrequested = 0;
-                            allDemand = 0;
-                            allPV = 0;
-                            
-                            Demands =0;
-                            PVs=0;
-                            
-                            
-//                            jsonreq = new JSONObject();
-//                            jsonreq.put("senderId", id);
-//                            jsonreq.put("data", "request");
-//                            jsonreq.put("timestep", this.timestep);
-//                            msg = JSONValue.toJSONString(jsonreq);
-//                            reqMessage = new ACLMessage(ACLMessage.REQUEST);
-//                            reqMessage.addReceiver(new AID(id+"_data", AID.ISLOCALNAME));
-//                            reqMessage.setContent(msg);
-//                            send(reqMessage);
-                            
-                            send(sender.reset().put("senderId", id).put("data", "request").put("timestep", this.timestep).prepare(id+"_data",ACLMessage.REQUEST));
-                            
-                            System.out.println(id + "_cont : data requested from "+ id+"_data");
                             break;
                      }
                 }else{
@@ -470,78 +542,19 @@ public class ControlAgent extends Agent{
                 }
             }
          });
-        
-        
-//        addBehaviour(new TickerBehaviour(this, 5000){
-//            int timestep = 0;
-//            @Override
-//            protected void onTick() {
-//                
-//           }
-//        });
-        
-        
     }
     
     
-    
-    public void sendMsg(int timestep, String id, double totalgeneration, double totalDemand, double allPV, double allDemand, String target, int type){
-        
 
-        
-        JSONObject JSONObj;
-
-        JSONObj=new JSONObject();
-
-        JSONObj.put("timestep",timestep);//timestep
-        JSONObj.put("senderId",id);//
-        JSONObj.put("targetId",target);//
-        JSONObj.put("type",type);//
-        double feedback=0;
-        if(type == ACLMessage.PROPOSE){
-            if(totalDemand == 0) JSONObj.put("feedback",0);
-            else{
-                if(totalgeneration > totalDemand) {
-                    feedback = 1;
-                    JSONObj.put("feedback",feedback);// can be positive or negative
-                }
-                else{
-                    feedback = totalgeneration/totalDemand; ///////////////////////////////////////::::to be  reviewed
-                    //if(feedback>=1) System.out.println("____________________________feedback from "+id+"_cont is "+feedback +" with totalgeneration = "+ totalgeneration+" andtotaldemand = "+totalDemand +" and timestep is "+ timestep);
-                    JSONObj.put("feedback",feedback);// can be positive or negative
-                }
-            }
-            System.out.println("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$ feedback is : " + feedback + " with totalgeneration " + totalgeneration + "and totalDemand "+totalDemand);
-        }
-        else{
-            JSONObj.put("PV",totalgeneration);// can be positive or negative
-            JSONObj.put("Demand", totalDemand);
-            JSONObj.put("allPV", allPV);
-            JSONObj.put("allDemand", allDemand);
-        }
-        //JSONObj.put("PV",totalPV);// can be positive or negative
-        //JSONObj.put("Demand", totalDemand);
-        JSONObj.put("MessageType", type);
-        
-        
-
-        String JSONString=JSONValue.toJSONString(JSONObj);
-
-        ACLMessage message = new ACLMessage(ACLMessage.INFORM);
-        message.addReceiver(new AID(id+"_soc", AID.ISLOCALNAME));
-        message.setContent(JSONString);
-        send(message);
-    }
     
     private static JSONObject JSONParse(String jsonString){
         JSONObject  jsonObject=new JSONObject();
         JSONParser jsonParser=new  JSONParser();
-        if ((jsonString != null) && !(jsonString.isEmpty())) {
+        if ((jsonString != null) && !(jsonString.isEmpty()) && !(jsonString.contains("Utils.Agent.Messaging"))) {
             try {
                 jsonObject=(JSONObject) jsonParser.parse(jsonString);
             } catch (ParseException e) {
                 e.printStackTrace();
-                //System.out.println(jsonString);
             }
         }
         return jsonObject;

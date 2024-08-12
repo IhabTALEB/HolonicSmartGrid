@@ -45,27 +45,11 @@ public class Sender{
     }
     
     public ACLMessage prepare(Object targetId, int performative){
-        //this.put("targetId", targetId);
         JSONString=JSONValue.toJSONString(this.json);
         message = new ACLMessage(performative);
         message.addReceiver(new AID(targetId.toString(), AID.ISLOCALNAME));
-        System.out.println(targetId.toString()+"targettttttttIDDDDDD*********** :");
-        System.out.println("JSON for "+ targetId.toString() +"*********** :" + JSONString);
         if("Dembeni_soc_soc".equals(this.json.get("targetId"))) System.out.println(1/0);
         message.setContent(JSONString);
         return message;
     }
-    
-    
-//    public ACLMessage prepareForward(JSONObject json, Object targetId, int performative){
-//        this.json = json;
-//        this.put("targetId", targetId);
-//        JSONString=JSONValue.toJSONString(json);
-//        message = new ACLMessage(performative);
-//        message.addReceiver(new AID(targetId.toString(), AID.ISLOCALNAME));
-//        message.setContent(JSONString);
-//        return message;
-//    }
-    
-    
 }

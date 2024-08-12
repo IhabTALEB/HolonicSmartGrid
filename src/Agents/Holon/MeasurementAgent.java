@@ -46,6 +46,8 @@ public class MeasurementAgent extends Agent{
         double[] totaldemands = new double[168];
         for (int i=0; i< energies[0].length; i++){
             totaldemands[i] = energies[0][i]*popValue;
+            //System.out.println("testtestest id"+ id + "popValue and globaldemand " + popValue +" and "+ energies[0][i] + " Result is : " + totaldemands[i]);
+
         }
 
         double[] totalPVs = new double[168];
@@ -53,13 +55,7 @@ public class MeasurementAgent extends Agent{
             totalPVs[i] = energies[1][i]*pvValue;
         }
 
-//                double[] totaldemands = energies[0]*popValue;//               *value
-//                double[] PVs = energies[1];//                        *PV value
-
-//        addBehaviour(new CyclicBehaviour(){
-        addBehaviour(new TickerBehaviour(this, 100){
-//           @Override
-//           public void action(){
+        addBehaviour(new TickerBehaviour(this, 1000){
             
             int timestep = 0;
             
@@ -68,13 +64,8 @@ public class MeasurementAgent extends Agent{
             protected void onTick() {
                 
                 
-                //sendMsg(timestep, "Demand", totaldemands[timestep], id, "_data");
                 send(sender.reset().put("timestep",timestep).put("type","Demand").put("value",totaldemands[timestep]).prepare(id+"_data", ACLMessage.INFORM));
-                //System.out.println(id + "_meas : measurement sent");
-                //sendMsg(timestep, "PV", totalPVs[timestep], id, "_data");
                 send(sender.reset().put("timestep",timestep).put("type","PV").put("value",totalPVs[timestep]).prepare(id+"_data", ACLMessage.INFORM));
-                //System.out.println(id + "_meas : measurement sent");
-                
                
                 timestep = (timestep+1)%168;
            }
@@ -100,55 +91,6 @@ public class MeasurementAgent extends Agent{
         message.setContent(JSONString);
         send(message);
     }
-    
-    
-//    public void prepareData(String EnergyPath, double value) throws InterruptedException{ //String PopulationPath
-//        //DataReader reader = new DataReader();
-//        
-//
-//        //double[][] energies = reader.ReadEnergy(EnergyPath);//= "/home/ihab/EDM/final/24-30 2020 prod pv et conso.xlsx"
-//        //double[] populations = reader.ReadPopulation(PopulationPath);//= "/home/ihab/EDM/final/population pourcentages.xlsx"
-//        
-//        
-//        double[][] energies = ReadEnergy("/home/ihab/EDM/final/24-30 2020 prod pv et conso.xlsx");//= //reader.
-//        //double[] populations = reader.ReadPopulation("/home/ihab/EDM/final/population pourcentages.xlsx");//= 
-//
-//        
-//        double[] totaldemands = energies[0];
-//        double[] PVs = energies[1];
-//        
-//        double[] demands = new double [168];
-//        //for(int i = 0; i < 168; i++){
-//        //    demands[i] = totaldemands[i] - PVs[i];
-//        //}
-//        
-//        double[][] ixdemands = new double[168][17];
-//        
-//        for(int i =0; i<168; i++){
-//            for (int j = 0; j< 17; j++){
-//                 ixdemands[i][j] = demands[i]*populations[j];
-//            }
-//        }
-//        double[][][] stockings = new double[168][17][3];
-//        
-//        
-//        for (int i=0;i<168;i++){
-//            for(int j=0; j<17;j++){
-//                //cost
-//                //max
-//                //0s
-//                stockings[i][j][0] = Math.random()*2-1;
-//                if(j==4) stockings[i][j][1] = 14.9;
-//                else{
-//                    if(j==14) stockings[i][j][1] = 2;
-//                    else stockings[i][j][1] = 0;
-//                }
-//                stockings[i][j][2] = 0;
-//                
-//            }
-//        }
-//    }
-    
     
         public double[][] ReadEnergy(String FileName) {
         double[][] arr = new double[2][168];
@@ -192,11 +134,10 @@ public class MeasurementAgent extends Agent{
                 //}
                 //System.out.print(arr[1][i] + "\t");
 
-                //System.out.println("");
+                //System.out.println("");w 
                 if(i==168) break;
             }
             file.close();
-            //System.out.println("\n ***************************** "+Arrays.deepToString(arr));
             return arr;
         } catch (Exception e) {
             e.printStackTrace();
